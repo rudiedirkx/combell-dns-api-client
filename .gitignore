@@ -1,0 +1,4 @@
+/vendor/
+/examples/env.php
+/examples/*.html
+/examples/dns-wait.php

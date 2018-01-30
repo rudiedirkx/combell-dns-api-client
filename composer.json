@@ -1,0 +1,21 @@
+{
+    "name": "rdx/combell-api",
+    "description": "Combell DNS API by scraping",
+    "type": "library",
+    "require": {
+        "guzzlehttp/guzzle": "^6.3",
+        "rdx/js-dom": "^1.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "rdx\\combelldns\\": "src"
+        }
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Rudie Dirkx",
+            "email": "github@hotblocks.nl"
+        }
+    ]
+}
