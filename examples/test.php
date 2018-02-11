@@ -20,11 +20,10 @@ var_dump($domain);
 
 if ( !$domain ) return;
 
-$records = $client->getDnsRecords($domain, 'a');
+$records = $client->getDnsRecords($domain, 'txt');
 print_r($records);
-exit;
 
-$delete = array_filter($txtRecords, function(combelldns\DnsRecord $record) {
+$delete = array_filter($records, function(combelldns\DnsRecord $record) {
 	return preg_match('#(^|\.)dns\d+\.#', $record->name) > 0;
 });
 $delete = $delete ? $delete[ array_rand($delete) ] : null;

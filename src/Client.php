@@ -17,17 +17,105 @@ class Client {
 
 	public $auth; // rdx\combelldns\WebAuth
 	public $guzzle; // GuzzleHttp\Client
-	public $uri; // rdx\combelldns\UriGen
 	public $domains = [];
+	public $csrfToken = '';
 
 	/**
 	 * Dependency constructor
 	 */
 	public function __construct( WebAuth $auth ) {
 		$this->auth = $auth;
-		$this->uri = new UriGen;
 
 		$this->setUpGuzzle();
+	}
+
+	/**
+	 *
+	 */
+	public function deleteDnsRecord( Domain $domain, DnsRecord $record ) {
+		$type = strtolower($record->type);
+
+		$data = [
+			'submit' => 'Toevoegen',
+			'csrf_token' => $this->csrfToken,
+		];
+		switch ( $type ) {
+			case 'txt':
+				$data += [
+					'action' => 'deletetxt',
+					'recordid' => $record->id,
+				];
+				break;
+
+			case 'a':
+				$data += [
+					'action' => 'deletea',
+					'recordid' => $record->id,
+				];
+				break;
+
+			default:
+				return false;
+		}
+
+		$rsp = $this->guzzle->request('POST', "product/dns/record/$type/$domain->id/1///50", [
+			'form_params' => $data,
+			'headers' => [
+				'Accept' => 'application/json, text/javascript',
+				'X-Requested-With' => 'XMLHttpRequest',
+			],
+		]);
+
+		return $rsp->getStatusCode() == 200;
+	}
+
+	/**
+	 *
+	 */
+	public function addDnsRecord( Domain $domain, DnsRecord $record ) {
+		$name = preg_replace('#\.' . preg_quote($domain->name, '#') . '$#', '', $record->name);
+		if ( $name == $record->name ) {
+			return false;
+		}
+
+		$type = strtolower($record->type);
+
+		$data = [
+			'submit' => 'Toevoegen',
+			'csrf_token' => $this->csrfToken,
+		];
+		switch ( $type ) {
+			case 'txt':
+				$data += [
+					'action' => 'addtxt',
+					'txt_add_hostname' => $name,
+					'txt_add_content' => $record->value,
+					'txt_add_ttl' => $record->ttl,
+				];
+				break;
+
+			case 'a':
+				$data += [
+					'action' => 'adda',
+					'a_add_hostname' => $name,
+					'a_add_destination' => $record->value,
+					'a_add_ttl' => $record->ttl,
+				];
+				break;
+
+			default:
+				return false;
+		}
+
+		$rsp = $this->guzzle->request('POST', "product/dns/record/$type/$domain->id/1///50", [
+			'form_params' => $data,
+			'headers' => [
+				'Accept' => 'application/json, text/javascript',
+				'X-Requested-With' => 'XMLHttpRequest',
+			],
+		]);
+
+		return $rsp->getStatusCode() == 200;
 	}
 
 	/**
@@ -153,6 +241,11 @@ class Client {
 
 		if ( $rsp->getStatusCode() == 200 ) {
 			$rsp = $this->guzzle->request('GET', 'home');
+
+			$html = (string) $rsp->getBody();
+			$doc = Node::create($html);
+
+			$this->csrfToken = $doc->query('meta[name="csrf_token"]')['content'];
 
 			// @todo Extract Customer?
 
