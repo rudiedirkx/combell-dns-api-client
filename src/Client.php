@@ -229,7 +229,7 @@ class Client {
 		$language = $form->query('input[name="language"]')['value'];
 		$submit = $form->query('input[name="submit"]')['value'];
 
-		$rsp = $this->guzzle->request('POST', 'login_check', [
+		$rsp = $this->guzzle->request('POST', 'login', [
 			'form_params' => [
 				'language' => $language,
 				'login' => $this->auth->user,
