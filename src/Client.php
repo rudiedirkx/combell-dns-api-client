@@ -10,8 +10,6 @@ use GuzzleHttp\Promise\PromiseInterface;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\RedirectMiddleware;
-use rdx\combelldns\WebAuth;
-use rdx\jsdom\Node;
 
 class Client {
 
@@ -150,7 +148,7 @@ class Client {
 	 *
 	 */
 	protected function scrapeDnsRecords( $html, $type ) {
-		$doc = Node::create($html);
+		$doc = JsDomNode::create($html);
 		$rows = $doc->queryAll('ul.settings > li.edit_row');
 
 		$records = [];
@@ -199,7 +197,7 @@ class Client {
 	 *
 	 */
 	protected function scrapeDomains( $html ) {
-		$doc = Node::create($html);
+		$doc = JsDomNode::create($html);
 		$rows = $doc->queryAll('ul.settings > li:not(.dataheader)');
 
 		$domains = [];
@@ -222,8 +220,63 @@ class Client {
 		$rsp = $this->guzzle->request('GET', '');
 
 		$html = (string) $rsp->getBody();
-		$doc = Node::create($html);
+		$doc = JsDomNode::create($html);
 
+		$oauth = !!$doc->query('#ReturnUrl');
+		return $oauth ? $this->logInOauth($rsp, $doc) : $this->logInSimple($rsp, $doc);
+	}
+
+	/**
+	 *
+	 */
+	protected function logInOauth( Response $rsp, JsDomNode $doc ) {
+		// throw new \Exception("Oauth login not supported =(");
+
+		$redirects = $rsp->getHeader(RedirectMiddleware::HISTORY_HEADER);
+		$currentUrl = end($redirects);
+
+		$returnUrl = $doc->getFormValue('ReturnUrl');
+		$token = $doc->getFormValue('__RequestVerificationToken');
+		$originDesc = $doc->getFormValue('ReturnOriginDescription');
+
+		$rsp = $this->guzzle->request('POST', $currentUrl, [
+			'form_params' => [
+				'ReturnUrl' => $returnUrl,
+				'Email' => $this->auth->user,
+				'Password' => $this->auth->pass,
+				'__RequestVerificationToken' => $token,
+				'ReturnOriginDescription' => $originDesc,
+				'button' => 'login',
+				'RememberLogin' => 'false',
+			],
+		]);
+
+		$html = (string) $rsp->getBody();
+		$doc = JsDomNode::create($html);
+
+		$form = $doc->query('form');
+		$values = $form->getFormValues();
+
+		$rsp = $this->guzzle->request('POST', $form['action'], [
+			'form_params' => $values,
+		]);
+
+		$html = (string) $rsp->getBody();
+		if ( strpos($html, 'login-panel-logged-in') !== false ) {
+			$doc = JsDomNode::create($html);
+
+			$this->csrfToken = $doc->query('meta[name="csrf_token"]')['content'];
+
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 *
+	 */
+	protected function logInSimple( Response $rsp, JsDomNode $doc ) {
 		$csrfToken = $doc->query('meta[name="csrf_token"]')['content'];
 		$form = $doc->query('#form_login');
 		$language = $form->query('input[name="language"]')['value'];
@@ -243,7 +296,7 @@ class Client {
 			$rsp = $this->guzzle->request('GET', 'home');
 
 			$html = (string) $rsp->getBody();
-			$doc = Node::create($html);
+			$doc = JsDomNode::create($html);
 
 			$this->csrfToken = $doc->query('meta[name="csrf_token"]')['content'];
 
