@@ -11,7 +11,7 @@ var_dump($client->logIn());
 echo "\n";
 
 $domains = $client->getDomains();
-// print_r($domains);
+print_r($domains);
 
 $domain = array_reduce($domains, function($result, combelldns\Domain $domain) {
 	return sha1($domain->name) == '3b1fab5b80b7da9ef662aafd8b1162a3f3c6b422' ? $domain : $result;

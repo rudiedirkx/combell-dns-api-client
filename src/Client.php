@@ -56,6 +56,7 @@ class Client {
 				return false;
 		}
 
+// print_r($data);
 		$rsp = $this->guzzle->request('POST', "product/dns/record/$type/$domain->id/1///50", [
 			'form_params' => $data,
 			'headers' => [
@@ -63,6 +64,7 @@ class Client {
 				'X-Requested-With' => 'XMLHttpRequest',
 			],
 		]);
+// echo "\n\ndelete:\n\n" . $rsp->getBody() . "\n\n\n\n";
 
 		return $rsp->getStatusCode() == 200;
 	}
@@ -105,6 +107,7 @@ class Client {
 				return false;
 		}
 
+// print_r($data);
 		$rsp = $this->guzzle->request('POST', "product/dns/record/$type/$domain->id/1///50", [
 			'form_params' => $data,
 			'headers' => [
@@ -112,6 +115,7 @@ class Client {
 				'X-Requested-With' => 'XMLHttpRequest',
 			],
 		]);
+// echo "\n\nadd:\n\n" . $rsp->getBody() . "\n\n\n\n";
 
 		return $rsp->getStatusCode() == 200;
 	}
@@ -140,6 +144,8 @@ class Client {
 
 		$rsp = $this->guzzle->request('GET', "product/dns/record/$type/$domain->id/1///50");
 		$html = (string) $rsp->getBody();
+
+		$this->scrapeCsrfToken($html);
 
 		return $domain->records[$type] = $this->scrapeDnsRecords($html, $type);
 	}
@@ -196,9 +202,20 @@ class Client {
 	/**
 	 *
 	 */
+	protected function scrapeCsrfToken( $html ) {
+		$doc = JsDomNode::create($html);
+
+		$this->csrfToken = $doc->query('meta[name="csrf_token"]')['content'];
+
+		return (bool) $this->csrfToken;
+	}
+
+	/**
+	 *
+	 */
 	protected function scrapeDomains( $html ) {
 		$doc = JsDomNode::create($html);
-		$rows = $doc->queryAll('ul.settings > li:not(.dataheader)');
+		$rows = $doc->queryAll('.table-responsive tbody tr');
 
 		$domains = [];
 		foreach ( $rows as $row ) {
@@ -263,10 +280,6 @@ class Client {
 
 		$html = (string) $rsp->getBody();
 		if ( strpos($html, 'login-panel-logged-in') !== false ) {
-			$doc = JsDomNode::create($html);
-
-			$this->csrfToken = $doc->query('meta[name="csrf_token"]')['content'];
-
 			return true;
 		}
 
@@ -296,9 +309,7 @@ class Client {
 			$rsp = $this->guzzle->request('GET', 'home');
 
 			$html = (string) $rsp->getBody();
-			$doc = JsDomNode::create($html);
-
-			$this->csrfToken = $doc->query('meta[name="csrf_token"]')['content'];
+			$this->scrapeCsrfToken($html);
 
 			// @todo Extract Customer?
 
